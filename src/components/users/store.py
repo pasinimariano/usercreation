@@ -1,5 +1,7 @@
+import uuid
 from .functions.emailRegex import valid_email
-from .functions.encrypter import encrypt_password
+from .functions.encryptor import encryptor
+from .functions.find_user import find_user
 
 
 class UserDB:
@@ -42,16 +44,29 @@ class UserDB:
             return response
 
     def encrypt_password(self):
-        return encrypt_password(self.password)
+        return encryptor(str(self.password))
 
-    def create_user(self, data):
+    def create_user(self, password):
         try:
-            self.db.insert_one(data)
+            id_ = uuid.uuid4()
+            post_user = {
+                '_id': id_.hex,
+                'username': self.username.lower(),
+                'email': self.email,
+                'password': password
+            }
+            self.db.insert_one(post_user)
 
             return {'message': '{} successfully created'.format(self.username)}
 
         except Exception as e:
             return {'Error': e}
+
+    def login_user(self):
+        if self.username is None:
+            return find_user(self.db, 'email', self.email)
+        if self.email is None:
+            return find_user(self.db, 'username', self.username)
 
     def __str__(self):
         return ''
