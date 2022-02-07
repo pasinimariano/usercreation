@@ -1,15 +1,18 @@
 import uuid
 from .functions.emailRegex import valid_email
-from .functions.encryptor import encryptor
+from .functions.encryptor import encryptor, check_encrypted_password
 from .functions.find_user import find_user
+from .functions.update_record import update_record
 
 
 class UserDB:
-    def __init__(self, server, username, email, password):
+    def __init__(self, server, username, email, password, id_=None, new_password=None):
         self.db = server.config['USER_COLLECTION']
         self.username = username
         self.email = email
         self.password = password
+        self.id = id_
+        self.new_password = new_password
 
     def validate_username(self):
         response = 'Success'
@@ -67,6 +70,40 @@ class UserDB:
             return find_user(self.db, 'email', self.email)
         if self.email is None:
             return find_user(self.db, 'username', self.username)
+
+    def update_user(self):
+        user = self.db.find_one({'_id': self.id})
+
+        if check_encrypted_password(self.password, str(user['password'])) and self.new_password is not None:
+            return update_record(
+                self.db,
+                self.id,
+                self.username,
+                self.email,
+                encryptor(str(self.new_password))
+            )
+        elif check_encrypted_password(self.password, str(user['password'])) and self.new_password is None:
+            return update_record(
+                self.db,
+                self.id,
+                self.username,
+                self.email,
+                encryptor(str(self.password))
+            )
+        else:
+            return {'error': 'Password is incorrect'}
+
+    def delete_user(self):
+        user = self.db.find_one({'_id': self.id})
+
+        if check_encrypted_password(self.password, str(user['password'])):
+            try:
+                self.db.delete_one(user)
+                return {'message': '{} correctly delete'.format(self.username)}
+            except Exception as e:
+                return {'error': str(e)}
+        else:
+            return {'error': 'Password is invalid'}
 
     def __str__(self):
         return ''

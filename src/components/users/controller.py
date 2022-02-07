@@ -1,7 +1,9 @@
-import jwt
-from datetime import datetime, timedelta
+from dotenv import dotenv_values
 from .store import UserDB
 from .functions.encryptor import check_encrypted_password
+from .functions.create_token import create_token
+
+ENV = dotenv_values('.env')
 
 
 def new_user(server, username, email, password):
@@ -39,16 +41,28 @@ def login_user(server, data):
         return 'Not found'
     else:
         if check_encrypted_password(data['password'], login['password']):
-            try:
-                claims = {
-                    "exp": datetime.utcnow() + timedelta(minutes=30),
-                    "iat": datetime.utcnow(),
-                    "sub": login['username']
-                }
-                token = jwt.encode(claims, server.config['SECRET_KEY'], algorithm='HS256')
-
-                return {'token': token}
-            except Exception as error:
-                return {'token_error': str(error)}
+            return create_token(login, ENV)
         else:
             return 'Incorrect'
+
+
+def update_user(server, data):
+    keys = data.keys()
+    if 'username' in keys and 'email' in keys and 'password' in keys and '_id' in keys:
+        if 'new_password' in keys:
+            user = UserDB(server, data['username'], data['email'], data['password'], data['_id'], data['new_password'])
+        else:
+            user = UserDB(server, data['username'], data['email'], data['password'], data['_id'])
+
+        update = user.update_user()
+
+        return update
+
+    else:
+        return 'Invalid'
+
+
+def delete_user(server, data):
+    user = UserDB(server, data['username'], data['email'], data['password'], data['_id'])
+
+    return user.delete_user()

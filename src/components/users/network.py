@@ -1,11 +1,12 @@
-from flask import  make_response, jsonify
-from .controller import new_user, login_user
+from flask import make_response, jsonify
+from .controller import new_user, login_user, update_user, delete_user
 from .functions.get_body import get_body
+from .functions.acccess_token import access_token
 
 
 def users_network(server):
     @server.route('/newuser', methods=['POST'])
-    def create_user():
+    def create():
         body = get_body()
         if not body:
             return make_response(
@@ -75,6 +76,60 @@ def users_network(server):
                     jsonify(response),
                     403,
                     {'WWW-Authenticate': 'Basic realm = "Could not create a token"'}
+                )
+            else:
+                return make_response(
+                    jsonify(response),
+                    200
+                )
+
+    @server.route('/update', methods=['POST'])
+    @access_token
+    def update():
+        body = get_body()
+        if not body:
+            return make_response(
+                'No data received',
+                403,
+                {'WWW-Authenticate': 'Basic realm = "Could not verify"'}
+            )
+        else:
+            response = update_user(server, body)
+            if response == 'Invalid':
+                return make_response(
+                    'Invalid data, one or more fields are empty',
+                    403,
+                    {'WWW-Authenticate': 'Basic realm = "Could not verify"'}
+                )
+            elif 'error' in response:
+                return make_response(
+                    jsonify(response),
+                    403,
+                    {'WWW-Authenticate': 'Basic realm = "Could not verify"'}
+                )
+            else:
+                return make_response(
+                    jsonify(response),
+                    200
+                )
+
+    @server.route('/delete', methods=['DELETE'])
+    @access_token
+    def delete():
+        body = get_body()
+        if not body:
+            return make_response(
+                'No data received',
+                403,
+                {'WWW-Authenticate': 'Basic realm = "Could not verify"'}
+            )
+        else:
+            response = delete_user(server, body)
+            if 'error' in response:
+                return make_response(
+                    jsonify(response),
+                    403,
+                    {'WWW-Authenticate': 'Basic realm = "Could not verify"'}
                 )
             else:
                 return make_response(
